@@ -1,7 +1,7 @@
 import '../sass/styles.css';
 import { fetchCountries } from './fetchCountries.js';
 import debounce from 'lodash.debounce';
-import Notiflix, { Notify } from 'notiflix';
+import { Notify } from 'notiflix';
 
 const DEBOUNCE_DELAY = 300;
 
@@ -15,34 +15,24 @@ refs.input.addEventListener('input', debounce(onInput, DEBOUNCE_DELAY));
 
 function onInput(event) {
   let inputedText = event.target.value.trim();
+  refs.countryInfo.innerHTML = '';
+  refs.countryList.innerHTML = '';
 
   if (inputedText === '') {
-    Notify.info('Type the name of the country');
     return;
-  } else {
-    fetchCountries(inputedText)
-      .then(countries => {
-        if (countries.length > 10) {
-          Notify.info(
-            'Too many matches found. Please enter a more specific name.'
-          );
-          return;
-        } else if (countries.length === 1) {
-          return oneCountry(countries);
-        } else if (countries.length > 0) {
-          return listOfCountries(countries);
-        } else {
-          throw new Error('Country not found');
-        }
-      })
-      .catch(onError);
-  }
-}
-
-function onError(error) {
-  if (error.message === 'Country not found') {
-    Notify.warning('Oops, there is no country with that name');
-  }
+  } else
+    fetchCountries(inputedText).then(countries => {
+      if (countries.length > 10) {
+        return Notify.info(
+          'Too many matches found. Please enter a more specific name.'
+        );
+      } else if (countries.length === 1) {
+        const country = creareCountryCard(countries);
+        refs.countryList.insertAdjacentHTML('beforeend', country);
+      } else {
+        return listOfCountries(countries);
+      }
+    });
 }
 
 function listOfCountries(countries) {
@@ -54,22 +44,24 @@ function listOfCountries(countries) {
 }
 
 function createListMarkup({ flags, name }) {
-  return `<li class="country-list"> <img src=${flags.svg} width="30px"> ${name.official}</li>`;
+  return `<li> <img src="${flags.svg}" width="30px"> ${name.official}</li>`;
 }
 
-function oneCountry(countries) {
-  let markup = createCardMarkup(countries[0]);
-  refs.countryInfo.innerHTML = markup;
-}
-
-function createCardMarkup({ flags, name, capital, population, languages }) {
-  return `
-    <img src=${flags.svg} width="30px">
-    <h2 class="country-card-title">${name.official}</h2>
-    <ul class="country-card-list">
-      <li>Capital: ${capital}</li>
-      <li>Population: ${population}</li>
-      <li>Languages: ${languages.join(', ')}</li>
-    </ul>
-  `;
+function creareCountryCard(countries) {
+  return countries.reduce(
+    (marcup, { name: { official }, capital, population, flags, languages }) => {
+      languages = Object.values(languages).join(', ');
+      return (
+        marcup +
+        `
+          <img src="${flags.svg}" width="50"/>
+          <h1>${official}</h1>
+          <h3>Capital: ${capital}</h3>
+          <h3>Population: ${population.toLocaleString()}</h3>
+          <h3>Languages: ${languages}</h3>
+      `
+      );
+    },
+    ''
+  );
 }
